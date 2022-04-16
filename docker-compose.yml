@@ -1,0 +1,71 @@
+version: "3"
+services:
+  mysql:
+    image: mysql:8.0
+    restart: always
+    container_name: db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - "./Data/mysql:/var/lib/mysql"
+    networks:
+      default:
+        ipv4_address: 192.168.2.2
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    container_name: phpmyadmin
+    links:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 0
+    ports:
+      - "81:80"
+    networks:
+      default:
+        ipv4_address: 192.168.2.3
+      
+  php:
+    build: ./Dockerfiles/php
+    container_name: php
+    volumes:
+      - ./html:/var/www/html
+    networks:
+      default:
+        ipv4_address: 192.168.2.4
+      
+  nginx:
+    build: ./Dockerfiles/nginx
+    container_name: nginx
+    depends_on:
+      - mysql
+      - php
+    links:
+      - mysql
+      - php
+    volumes:
+      - ./html:/var/www/html
+      - ./Services/nginx/sites:/etc/nginx/conf.d
+      - ./Services/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./Data/nginx:/var/log/nginx
+    ports:
+      - "80:80"
+    networks:
+      default:
+        ipv4_address: 192.168.2.5
+      
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.2.0/24
